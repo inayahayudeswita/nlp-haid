@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
+import random
 
 # =========================
 # PAGE CONFIG
@@ -59,12 +60,25 @@ def build_index(documents):
 index, embed_model = build_index(documents)
 
 # =========================
-# RETRIEVAL FUNCTION
+# RETRIEVAL FUNCTION WITH FALLBACK
 # =========================
-def retrieve_answer(query, k=1):
+fallbacks = [
+    "Maaf, saya belum memiliki jawaban untuk pertanyaan itu.",
+    "Hmm, saya tidak yakin dengan jawaban. Bisa coba tanya lain?",
+    "Sayangnya saya tidak tahu jawaban pertanyaan itu. Coba tanya dengan kata berbeda."
+]
+
+def retrieve_answer(query, k=1, similarity_threshold=0.5):
     q_emb = embed_model.encode([query], convert_to_numpy=True)
     D, I = index.search(q_emb, k)
-    return kb.iloc[I[0][0]]['answer']
+
+    # Konversi L2 distance ke similarity sederhana
+    similarity = 1 / (1 + D[0][0])
+
+    if similarity < similarity_threshold:
+        return random.choice(fallbacks)
+    else:
+        return kb.iloc[I[0][0]]['answer']
 
 # =========================
 # SESSION STATE
