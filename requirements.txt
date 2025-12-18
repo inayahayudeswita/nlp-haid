@@ -5,3 +5,5 @@ scikit-learn
 faiss-cpu
 torch
 transformers
+sentence-transformers
+
