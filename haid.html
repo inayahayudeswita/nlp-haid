@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Informasi Haid</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 85vh;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #e91e63 0%, #ad1457 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .bot-message {
+            background-color: #f5f5f5;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .user-message {
+            background-color: #e91e63;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .input-container {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #f0f0f0;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            border-color: #e91e63;
+        }
+        
+        button {
+            background-color: #e91e63;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #ad1457;
+        }
+        
+        .quick-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 0 20px 15px 20px;
+        }
+        
+        .quick-btn {
+            background-color: #f5f5f5;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .quick-btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .period-tracker {
+            background-color: #f9f0f5;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px 20px;
+            display: none;
+        }
+        
+        .period-tracker h3 {
+            color: #ad1457;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tracker-input {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .tracker-input input {
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        
+        .tracker-result {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .info-box {
+            background-color: #f0f7ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+            border-left: 4px solid #4a90e2;
+        }
+        
+        .info-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .symptom-item {
+            display: inline-block;
+            background-color: #ffebee;
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin: 3px;
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                height: 90vh;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-venus"></i> Chatbot Informasi Haid</h1>
+            <p>Tanyakan seputar siklus menstruasi, kesehatan, dan tips perawatan</p>
+        </div>
+        
+        <div class="quick-options">
+            <button class="quick-btn" data-question="Apa itu siklus haid?">Siklus Haid</button>
+            <button class="quick-btn" data-question="Gejala umum haid">Gejala Haid</button>
+            <button class="quick-btn" data-question="Tips kesehatan saat haid">Tips Sehat</button>
+            <button class="quick-btn" data-question="Lacak siklus haid">Lacak Siklus</button>
+        </div>
+        
+        <div class="period-tracker" id="periodTracker">
+            <h3><i class="fas fa-calendar-alt"></i> Pelacak Siklus Haid</h3>
+            <div class="tracker-input">
+                <div>
+                    <label>Tanggal pertama haid terakhir:</label>
+                    <input type="date" id="lastPeriodDate">
+                </div>
+                <div>
+                    <label>Rata-rata panjang siklus (hari):</label>
+                    <input type="number" id="cycleLength" value="28" min="21" max="45">
+                </div>
+                <button onclick="calculateCycle()" style="border-radius: 10px; width: 100%;">Hitung Perkiraan</button>
+            </div>
+            <div class="tracker-result" id="trackerResult">
+                <h4>Perkiraan Siklus Anda:</h4>
+                <p id="nextPeriod"></p>
+                <p id="fertileWindow"></p>
+                <p id="ovulationDay"></p>
+            </div>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot-message">
+                Halo! Saya chatbot informasi haid. Saya siap membantu menjawab pertanyaan seputar menstruasi, siklus haid, dan tips kesehatan. Silakan pilih topik di atas atau tanyakan langsung pada saya.
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="Ketik pertanyaan Anda di sini..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
+        // Data pengetahuan chatbot
+        const knowledgeBase = {
+            "siklus haid": {
+                title: "Apa itu Siklus Haid?",
+                content: "Siklus haid adalah perubahan alami dalam sistem reproduksi wanita yang mempersiapkan tubuh untuk kehamilan. Siklus dimulai dari hari pertama menstruasi hingga hari pertama menstruasi berikutnya. Rata-rata siklus berlangsung 28 hari, namun bisa bervariasi antara 21-35 hari."
+            },
+            "gejala haid": {
+                title: "Gejala Umum Saat Haid",
+                content: "Gejala yang umum dialami selama haid atau sebelum haid (PMS) meliputi:",
+                symptoms: ["Kram perut", "Nyeri punggung", "Payudara sensitif", "Perubahan suasana hati", "Kelelahan", "Jerawat", "Sakit kepala", "Perut kembung"]
+            },
+            "tips sehat": {
+                title: "Tips Kesehatan Saat Haid",
+                content: "1. Konsumsi makanan bergizi dan kaya zat besi<br>2. Minum air putih yang cukup<br>3. Olahraga ringan seperti jalan kaki atau yoga<br>4. Gunakan pembalut yang nyaman dan ganti secara teratur<br>5. Istirahat yang cukup<br>6. Kelola stres dengan teknik relaksasi<br>7. Hindari kafein dan makanan asin berlebihan"
+            },
+            "durasi normal": {
+                title: "Durasi Haid Normal",
+                content: "Durasi menstruasi normal biasanya berlangsung 3-7 hari. Jika lebih pendek dari 2 hari atau lebih lama dari 8 hari secara konsisten, disarankan untuk berkonsultasi dengan dokter."
+            },
+            "pms": {
+                title: "Apa itu PMS?",
+                content: "PMS (Pre-Menstrual Syndrome) adalah kumpulan gejala fisik dan emosional yang dialami beberapa wanita sebelum menstruasi. Gejalanya bervariasi dari ringan hingga berat dan biasanya menghilang saat menstruasi dimulai."
+            },
+            "produk haid": {
+                title: "Produk Menstruasi",
+                content: "Beberapa produk menstruasi yang umum digunakan:<br>• Pembalut sekali pakai<br>• Pembalut kain (reusable)<br>• Tampon<br>• Menstrual cup<br>• Celana menstruasi<br>Pilih produk yang sesuai dengan kebutuhan dan kenyamanan Anda."
+            },
+            "nyeri haid": {
+                title: "Mengatasi Nyeri Haid",
+                content: "Untuk mengurangi nyeri haid:<br>1. Kompres hangat pada perut bagian bawah<br>2. Pijat ringan pada area perut<br>3. Konsumsi teh jahe atau chamomile<br>4. Konsumsi obat pereda nyeri jika diperlukan (atas anjuran dokter)<br>5. Hindari makanan/minuman dingin"
+            },
+            "siklus tidak teratur": {
+                title: "Siklus Tidak Teratur",
+                content: "Siklus dianggap tidak teratur jika jarak antar menstruasi berubah-ubah lebih dari 7-9 hari. Penyebabnya bisa stres, perubahan berat badan, olahraga berlebihan, kondisi medis tertentu, atau menopause. Konsultasikan ke dokter jika terjadi terus-menerus."
+            }
+        };
+        
+        // Fungsi untuk menambahkan pesan ke chat
+        function addMessage(sender, text) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = text;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Fungsi untuk mengirim pesan
+        function sendMessage() {
+            const userInput = document.getElementById('userInput');
+            const question = userInput.value.trim().toLowerCase();
+            
+            if (!question) return;
+            
+            // Tampilkan pesan pengguna
+            addMessage('user', question);
+            userInput.value = '';
+            
+            // Sembunyikan period tracker jika sedang terbuka
+            document.getElementById('periodTracker').style.display = 'none';
+            document.getElementById('trackerResult').style.display = 'none';
+            
+            // Beri jeda sebelum bot merespon
+            setTimeout(() => {
+                processQuestion(question);
+            }, 500);
+        }
+        
+        // Fungsi untuk menangani tombol Enter
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // Fungsi untuk memproses pertanyaan
+        function processQuestion(question) {
+            let found = false;
+            
+            // Cek kata kunci dalam pertanyaan
+            for (const key in knowledgeBase) {
+                if (question.includes(key)) {
+                    displayAnswer(knowledgeBase[key]);
+                    found = true;
+                    break;
+                }
+            }
+            
+            // Jika tidak ditemukan, cek pertanyaan khusus
+            if (!found) {
+                if (question.includes('lacak') || question.includes('tracker') || question.includes('perkiraan')) {
+                    showPeriodTracker();
+                    found = true;
+                } else if (question.includes('halo') || question.includes('hai') || question.includes('hello')) {
+                    addMessage('bot', "Halo! Ada yang bisa saya bantu seputar haid atau siklus menstruasi?");
+                    found = true;
+                } else if (question.includes('terima kasih') || question.includes('thanks')) {
+                    addMessage('bot', "Sama-sama! Semoga informasi yang saya berikan bermanfaat. Jaga selalu kesehatan reproduksi Anda!");
+                    found = true;
+                }
+            }
+            
+            // Jika masih tidak ditemukan, berikan respon default
+            if (!found) {
+                const defaultResponses = [
+                    "Saya belum paham pertanyaan Anda. Coba tanyakan tentang siklus haid, gejala haid, tips sehat, atau produk menstruasi.",
+                    "Maaf, saya hanya bisa membantu dengan informasi seputar haid dan menstruasi. Coba tanyakan hal lain yang berkaitan.",
+                    "Pertanyaan Anda mungkin di luar pengetahuan saya. Coba gunakan kata kunci seperti 'siklus haid', 'gejala haid', atau 'tips sehat saat haid'."
+                ];
+                const randomResponse = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+                addMessage('bot', randomResponse);
+            }
+        }
+        
+        // Fungsi untuk menampilkan jawaban
+        function displayAnswer(data) {
+            let response = `<div class="info-title"><i class="fas fa-info-circle"></i> ${data.title}</div>`;
+            response += `<div>${data.content}</div>`;
+            
+            // Jika ada gejala, tambahkan daftar gejala
+            if (data.symptoms) {
+                response += `<div style="margin-top: 10px;">`;
+                data.symptoms.forEach(symptom => {
+                    response += `<span class="symptom-item">${symptom}</span>`;
+                });
+                response += `</div>`;
+            }
+            
+            // Tambahkan catatan medis
+            response += `<div class="info-box" style="margin-top: 15px;">
+                <strong><i class="fas fa-stethoscope"></i> Catatan Medis:</strong><br>
+                Informasi ini bersifat edukasi. Konsultasikan dengan dokter atau tenaga medis profesional untuk masalah kesehatan yang spesifik.
+            </div>`;
+            
+            addMessage('bot', response);
+        }
+        
+        // Fungsi untuk menampilkan period tracker
+        function showPeriodTracker() {
+            const tracker = document.getElementById('periodTracker');
+            tracker.style.display = 'block';
+            
+            // Set tanggal default (14 hari yang lalu)
+            const today = new Date();
+            const twoWeeksAgo = new Date(today);
+            twoWeeksAgo.setDate(today.getDate() - 14);
+            const formattedDate = twoWeeksAgo.toISOString().split('T')[0];
+            document.getElementById('lastPeriodDate').value = formattedDate;
+            
+            addMessage('bot', "Saya akan membantu melacak siklus haid Anda. Silakan isi informasi di bawah ini.");
+        }
+        
+        // Fungsi untuk menghitung siklus
+        function calculateCycle() {
+            const lastPeriodDate = new Date(document.getElementById('lastPeriodDate').value);
+            const cycleLength = parseInt(document.getElementById('cycleLength').value);
+            
+            if (!lastPeriodDate || isNaN(cycleLength)) {
+                alert("Harap isi tanggal dan panjang siklus dengan benar.");
+                return;
+            }
+            
+            // Hitung tanggal periode berikutnya
+            const nextPeriodDate = new Date(lastPeriodDate);
+            nextPeriodDate.setDate(nextPeriodDate.getDate() + cycleLength);
+            
+            // Hitung masa subur (5 hari sebelum ovulasi sampai 1 hari setelah ovulasi)
+            const ovulationDate = new Date(lastPeriodDate);
+            ovulationDate.setDate(ovulationDate.getDate() + (cycleLength - 14));
+            
+            const fertileStart = new Date(ovulationDate);
+            fertileStart.setDate(fertileStart.getDate() - 5);
+            
+            const fertileEnd = new Date(ovulationDate);
+            fertileEnd.setDate(fertileEnd.getDate() + 1);
+            
+            // Format tanggal
+            const formatDate = (date) => {
+                return date.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            };
+            
+            // Tampilkan hasil
+            document.getElementById('nextPeriod').innerHTML = `<strong>Periode berikutnya:</strong> ${formatDate(nextPeriodDate)}`;
+            document.getElementById('fertileWindow').innerHTML = `<strong>Masa subur:</strong> ${formatDate(fertileStart)} - ${formatDate(fertileEnd)}`;
+            document.getElementById('ovulationDay').innerHTML = `<strong>Perkiraan ovulasi:</strong> ${formatDate(ovulationDate)}`;
+            
+            document.getElementById('trackerResult').style.display = 'block';
+            
+            // Scroll ke hasil
+            document.getElementById('trackerResult').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Event listener untuk tombol cepat
+        document.querySelectorAll('.quick-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const question = this.getAttribute('data-question');
+                
+                // Jika tombol "Lacak Siklus" ditekan
+                if (question.includes("Lacak")) {
+                    showPeriodTracker();
+                    return;
+                }
+                
+                // Tampilkan pesan pengguna
+                addMessage('user', question);
+                
+                // Sembunyikan period tracker jika terbuka
+                document.getElementById('periodTracker').style.display = 'none';
+                document.getElementById('trackerResult').style.display = 'none';
+                
+                // Beri jeda sebelum bot merespon
+                setTimeout(() => {
+                    processQuestion(question.toLowerCase());
+                }, 500);
+            });
+        });
+        
+        // Inisialisasi chat dengan pesan selamat datang
+        window.onload = function() {
+            // Tambahkan pesan selamat datang tambahan setelah beberapa detik
+            setTimeout(() => {
+                addMessage('bot', 'Anda bisa menanyakan hal-hal seperti:<br>• Apa itu siklus haid?<br>• Gejala umum saat haid<br>• Tips menjaga kesehatan selama menstruasi<br>• Atau gunakan fitur "Lacak Siklus" di atas');
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
