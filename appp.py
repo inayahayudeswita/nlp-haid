@@ -1,0 +1,247 @@
+import streamlit as st
+import pandas as pd
+import faiss
+import random
+import torch
+import os
+
+from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
+# =========================
+# OPTIONS
+# =========================
+
+# =========================
+# MODEL PATH SETUP
+# =========================
+
+# Ini Path lokal tempat model akan disalin untuk dipakai
+LOCAL_MODEL_PATH = "qwen_model"
+
+# ====================================
+# Jika kamu menjalankan di Colab / Drive
+# ====================================
+def download_model_from_drive():
+    # Google Drive link
+    drive_link = "https://drive.google.com/drive/folders/1MdG53GlLDOcTt9rV19ZLIdtSpLNC9OOh"
+    # Kamu harus mount drive dulu
+    try:
+        from google.colab import drive
+        drive.mount("/content/drive", force_remount=True)
+        # Ganti dengan path model di Drive
+        drive_model_path = "/content/drive/MyDrive/qwen_model"
+        if os.path.exists(drive_model_path):
+            os.system(f"cp -r '{drive_model_path}' '{LOCAL_MODEL_PATH}'")
+            print("Model berhasil disalin dari Drive ke lokal.")
+        else:
+            print("Model tidak ditemukan di Drive pada path:", drive_model_path)
+    except Exception as e:
+        print("Drive mount error:", str(e))
+
+# Cek apakah model sudah ada di lokal
+if not os.path.exists(LOCAL_MODEL_PATH):
+    print("Model lokal tidak ditemukan. Mencoba download dari Drive...")
+    download_model_from_drive()
+
+# =========================
+# PAGE CONFIG
+# =========================
+st.set_page_config(
+    page_title="Chatbot Edukasi Haid",
+    page_icon="🌸",
+    layout="centered"
+)
+
+# =========================
+# CSS CHAT
+# =========================
+st.markdown("""
+<style>
+.chat-container { max-width: 700px; margin: auto; }
+.user-bubble {
+    background: #ffd6e8;
+    padding: 12px 16px;
+    border-radius: 18px 18px 4px 18px;
+    margin: 8px 0;
+    text-align: right;
+}
+.bot-bubble {
+    background: #f1f3f6;
+    padding: 12px 16px;
+    border-radius: 18px 18px 18px 4px;
+    margin: 8px 0;
+}
+.sender {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #666;
+}
+.accuracy {
+    font-size: 11px;
+    color: #888;
+    margin-top: 6px;
+}
+.footer {
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin-top: 20px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
+# HEADER
+# =========================
+st.markdown("<h1 style='text-align:center;'>🌸 Chatbot Edukasi Haid</h1>", unsafe_allow_html=True)
+st.markdown(
+    "<p style='text-align:center;color:#666;'>RAG Chatbot dengan Qwen Model</p>",
+    unsafe_allow_html=True
+)
+
+# =========================
+# LOAD KB
+# =========================
+@st.cache_data
+def load_kb():
+    kb = pd.read_csv("knowledge_base_haid.csv")
+    kb["content"] = kb["question"] + " " + kb["answer"]
+    return kb
+
+kb = load_kb()
+documents = kb["content"].tolist()
+
+# =========================
+# EMBEDDING + FAISS
+# =========================
+@st.cache_resource
+def build_index(documents):
+    embed_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    embeddings = embed_model.encode(documents, convert_to_numpy=True)
+    dim = embeddings.shape[1]
+    index = faiss.IndexFlatL2(dim)
+    index.add(embeddings)
+    return index, embed_model
+
+index, embed_model = build_index(documents)
+
+# =========================
+# LOAD QWEN MODEL
+# =========================
+@st.cache_resource
+def load_qwen():
+    tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
+    model = AutoModelForCausalLM.from_pretrained(
+        LOCAL_MODEL_PATH,
+        device_map="auto",
+        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+    )
+    model.eval()
+    return tokenizer, model
+
+tokenizer, qwen_model = load_qwen()
+
+# =========================
+# RAG FUNCTION
+# =========================
+fallbacks = [
+    "Maaf, saya belum memiliki informasi yang cukup untuk menjawab pertanyaan tersebut.",
+    "Saya belum menemukan jawaban yang sesuai. Silakan coba pertanyaan lain.",
+    "Informasi tersebut belum tersedia dalam basis pengetahuan saya."
+]
+
+def rag_answer(query, k=1, threshold=0.5):
+    q_emb = embed_model.encode([query], convert_to_numpy=True)
+    D, I = index.search(q_emb, k)
+    similarity = 1 / (1 + D[0][0])
+    accuracy = round(similarity * 100, 2)
+
+    if similarity < threshold:
+        return random.choice(fallbacks), accuracy
+
+    context = kb.iloc[I[0][0]]["content"]
+    prompt = f"""
+    Anda adalah chatbot edukasi kesehatan reproduksi perempuan.
+    Jawablah HANYA berdasarkan informasi berikut.
+    Jika informasi tidak tersedia, jawab: "Maaf, informasi tersebut belum tersedia."
+
+Informasi:
+{context}
+
+Pertanyaan:
+{query}
+
+Jawaban:
+"""
+
+    inputs = tokenizer(prompt, return_tensors="pt").to(qwen_model.device)
+
+    with torch.no_grad():
+        outputs = qwen_model.generate(
+            **inputs,
+            max_new_tokens=120,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.9
+        )
+
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    answer = response.split("Jawaban:")[-1].strip()
+
+    return answer, accuracy
+
+# =========================
+# SESSION STATE
+# =========================
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# =========================
+# CHAT DISPLAY
+# =========================
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+for role, msg, acc in st.session_state.messages:
+    if role == "user":
+        st.markdown(f"""
+        <div class="user-bubble">
+            <div class="sender">User</div>
+            {msg}
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="bot-bubble">
+            <div class="sender">Bot</div>
+            {msg}
+            <div class="accuracy">Tingkat akurasi: {acc}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================
+# INPUT
+# =========================
+def send():
+    q = st.session_state.input.strip()
+    if q:
+        a, acc = rag_answer(q)
+        st.session_state.messages.append(("user", q, None))
+        st.session_state.messages.append(("bot", a, acc))
+        st.session_state.input = ""
+
+col1, col2 = st.columns([5,1])
+with col1:
+    st.text_input("💬 Tulis pertanyaanmu di sini...", key="input")
+with col2:
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.button("Kirim", on_click=send)
+
+# =========================
+# FOOTER
+# =========================
+st.markdown(
+    "<div class='footer'>⚠️ Chatbot ini hanya untuk edukasi, bukan pengganti konsultasi medis.</div>",
+    unsafe_allow_html=True
+)

@@ -1,11 +1,34 @@
+# =========================
 # Virtual environment
+# =========================
 venv/
 env/
 .venv/
 
+# =========================
 # Python cache
+# =========================
 __pycache__/
 *.pyc
 
+# =========================
 # Streamlit secrets
+# =========================
 .streamlit/secrets.toml
+
+# =========================
+# Model & AI artifacts
+# =========================
+qwen_model/
+models/
+*.bin
+*.safetensors
+*.pt
+*.ckpt
+
+# =========================
+# FAISS index & cache
+# =========================
+*.faiss
+*.index
+.cache/
