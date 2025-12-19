@@ -30,21 +30,21 @@ def download_and_extract_model_from_drive():
         # Download file dari Google Drive
         try:
             gdown.download(drive_link, zip_file_path, quiet=False)
-            print("Model berhasil didownload.")
+            st.write("Model berhasil didownload.")
             
             # Ekstrak file ZIP ke folder LOCAL_MODEL_PATH
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(LOCAL_MODEL_PATH)
-                print(f"Model berhasil diekstrak ke {LOCAL_MODEL_PATH}.")
+                st.write(f"Model berhasil diekstrak ke {LOCAL_MODEL_PATH}.")
             
             # Hapus file ZIP setelah ekstraksi (optional)
             os.remove(zip_file_path)
-            print(f"File ZIP {zip_file_path} telah dihapus.")
+            st.write(f"File ZIP {zip_file_path} telah dihapus.")
             
         except Exception as e:
-            print(f"Terjadi kesalahan saat mendownload dan mengekstrak model: {str(e)}")
+            st.write(f"Terjadi kesalahan saat mendownload dan mengekstrak model: {str(e)}")
     else:
-        print(f"Model sudah ada di {LOCAL_MODEL_PATH}, tidak perlu mengunduh ulang.")
+        st.write(f"Model sudah ada di {LOCAL_MODEL_PATH}, tidak perlu mengunduh ulang.")
 
 # Pastikan model ada, jika tidak, download dan ekstrak
 download_and_extract_model_from_drive()
