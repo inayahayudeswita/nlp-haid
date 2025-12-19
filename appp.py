@@ -136,16 +136,17 @@ def load_qwen():
         tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
         model = AutoModelForCausalLM.from_pretrained(
             LOCAL_MODEL_PATH,
-            device_map="auto",
+            device_map="auto",  # Otomatis memilih device (GPU atau CPU)
             torch_dtype=torch.float32 if not torch.cuda.is_available() else torch.float16
         )
         model.eval()
-        return tokenizer, model
+        device = model.device  # Menyimpan device yang digunakan model (GPU atau CPU)
+        return tokenizer, model, device
     except Exception as e:
         print(f"Error saat memuat model: {e}")
-        return None, None
+        return None, None, None
 
-tokenizer, qwen_model = load_qwen()
+tokenizer, qwen_model, device = load_qwen()
 if tokenizer is None or qwen_model is None:
     st.error("Terjadi kesalahan saat memuat model.")
 
@@ -170,9 +171,13 @@ def rag_answer(query, k=1, threshold=0.5):
     context = kb.iloc[I[0][0]]["content"]
     prompt = f"""Informasi: {context}\nPertanyaan: {query}\nJawaban:"""
 
-    inputs = tokenizer(prompt, return_tensors="pt").to(qwen_model.device)
+    # Memindahkan tensor ke perangkat yang benar (GPU atau CPU)
+    inputs = tokenizer(prompt, return_tensors="pt")
+    inputs = {key: value.to(device) for key, value in inputs.items()}  # Memindahkan ke perangkat yang sesuai
+
     with torch.no_grad():
         outputs = qwen_model.generate(**inputs, max_new_tokens=120)
+
     answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return answer, accuracy
 
