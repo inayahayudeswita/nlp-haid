@@ -4,45 +4,50 @@ import faiss
 import random
 import torch
 import os
+import zipfile
+import gdown
 
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # =========================
-# OPTIONS
-# =========================
-
-# =========================
 # MODEL PATH SETUP
 # =========================
-
-# Ini Path lokal tempat model akan disalin untuk dipakai
 LOCAL_MODEL_PATH = "qwen_model"
 
-# ====================================
-# Jika kamu menjalankan di Colab / Drive
-# ====================================
-def download_model_from_drive():
-    # Google Drive link
-    drive_link = "https://drive.google.com/drive/folders/1MdG53GlLDOcTt9rV19ZLIdtSpLNC9OOh"
-    # Kamu harus mount drive dulu
-    try:
-        from google.colab import drive
-        drive.mount("/content/drive", force_remount=True)
-        # Ganti dengan path model di Drive
-        drive_model_path = "/content/drive/MyDrive/qwen_model"
-        if os.path.exists(drive_model_path):
-            os.system(f"cp -r '{drive_model_path}' '{LOCAL_MODEL_PATH}'")
-            print("Model berhasil disalin dari Drive ke lokal.")
-        else:
-            print("Model tidak ditemukan di Drive pada path:", drive_model_path)
-    except Exception as e:
-        print("Drive mount error:", str(e))
+# =========================
+# DOWNLOAD MODEL DARI GOOGLE DRIVE
+# =========================
+def download_and_extract_model_from_drive():
+    # URL untuk file ZIP model dari Google Drive
+    drive_link = "https://drive.google.com/uc?id=1xT3eVhxpNeXVjcxJVCmtIFm56Y9GFwr-"
+    
+    # Path lokal untuk menyimpan file ZIP
+    zip_file_path = "qwen_model.zip"
+    
+    # Cek apakah folder model sudah ada
+    if not os.path.exists(LOCAL_MODEL_PATH):
+        # Download file dari Google Drive
+        try:
+            gdown.download(drive_link, zip_file_path, quiet=False)
+            print("Model berhasil didownload.")
+            
+            # Ekstrak file ZIP ke folder LOCAL_MODEL_PATH
+            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+                zip_ref.extractall(LOCAL_MODEL_PATH)
+                print(f"Model berhasil diekstrak ke {LOCAL_MODEL_PATH}.")
+            
+            # Hapus file ZIP setelah ekstraksi (optional)
+            os.remove(zip_file_path)
+            print(f"File ZIP {zip_file_path} telah dihapus.")
+            
+        except Exception as e:
+            print(f"Terjadi kesalahan saat mendownload dan mengekstrak model: {str(e)}")
+    else:
+        print(f"Model sudah ada di {LOCAL_MODEL_PATH}, tidak perlu mengunduh ulang.")
 
-# Cek apakah model sudah ada di lokal
-if not os.path.exists(LOCAL_MODEL_PATH):
-    print("Model lokal tidak ditemukan. Mencoba download dari Drive...")
-    download_model_from_drive()
+# Pastikan model ada, jika tidak, download dan ekstrak
+download_and_extract_model_from_drive()
 
 # =========================
 # PAGE CONFIG
@@ -56,8 +61,7 @@ st.set_page_config(
 # =========================
 # CSS CHAT
 # =========================
-st.markdown("""
-<style>
+st.markdown("""<style>
 .chat-container { max-width: 700px; margin: auto; }
 .user-bubble {
     background: #ffd6e8;
@@ -89,17 +93,13 @@ st.markdown("""
     font-size: 12px;
     margin-top: 20px;
 }
-</style>
-""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
 # =========================
 # HEADER
 # =========================
 st.markdown("<h1 style='text-align:center;'>🌸 Chatbot Edukasi Haid</h1>", unsafe_allow_html=True)
-st.markdown(
-    "<p style='text-align:center;color:#666;'>RAG Chatbot dengan Qwen Model</p>",
-    unsafe_allow_html=True
-)
+st.markdown("<p style='text-align:center;color:#666;'>RAG Chatbot dengan Qwen Model</p>", unsafe_allow_html=True)
 
 # =========================
 # LOAD KB

@@ -32,3 +32,5 @@ models/
 *.faiss
 *.index
 .cache/
+
+qwen_model.zip 
