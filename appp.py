@@ -27,24 +27,24 @@ def download_and_extract_model_from_drive():
     
     # Cek apakah folder model sudah ada
     if not os.path.exists(LOCAL_MODEL_PATH):
-        # Download file dari Google Drive
         try:
+            # Download file dari Google Drive
             gdown.download(drive_link, zip_file_path, quiet=False)
-            st.write("Model berhasil didownload.")
+            print("Model berhasil didownload.")
             
             # Ekstrak file ZIP ke folder LOCAL_MODEL_PATH
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
                 zip_ref.extractall(LOCAL_MODEL_PATH)
-                st.write(f"Model berhasil diekstrak ke {LOCAL_MODEL_PATH}.")
+                print(f"Model berhasil diekstrak ke {LOCAL_MODEL_PATH}.")
             
             # Hapus file ZIP setelah ekstraksi (optional)
             os.remove(zip_file_path)
-            st.write(f"File ZIP {zip_file_path} telah dihapus.")
+            print(f"File ZIP {zip_file_path} telah dihapus.")
             
         except Exception as e:
-            st.write(f"Terjadi kesalahan saat mendownload dan mengekstrak model: {str(e)}")
+            print(f"Terjadi kesalahan saat mendownload dan mengekstrak model: {str(e)}")
     else:
-        st.write(f"Model sudah ada di {LOCAL_MODEL_PATH}, tidak perlu mengunduh ulang.")
+        print(f"Model sudah ada di {LOCAL_MODEL_PATH}, tidak perlu mengunduh ulang.")
 
 # Pastikan model ada, jika tidak, download dan ekstrak
 download_and_extract_model_from_drive()
@@ -132,16 +132,22 @@ index, embed_model = build_index(documents)
 # =========================
 @st.cache_resource
 def load_qwen():
-    tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
-    model = AutoModelForCausalLM.from_pretrained(
-        LOCAL_MODEL_PATH,
-        device_map="auto",
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-    )
-    model.eval()
-    return tokenizer, model
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
+        model = AutoModelForCausalLM.from_pretrained(
+            LOCAL_MODEL_PATH,
+            device_map="auto",
+            torch_dtype=torch.float32 if not torch.cuda.is_available() else torch.float16
+        )
+        model.eval()
+        return tokenizer, model
+    except Exception as e:
+        print(f"Error saat memuat model: {e}")
+        return None, None
 
 tokenizer, qwen_model = load_qwen()
+if tokenizer is None or qwen_model is None:
+    st.error("Terjadi kesalahan saat memuat model.")
 
 # =========================
 # RAG FUNCTION
@@ -162,34 +168,12 @@ def rag_answer(query, k=1, threshold=0.5):
         return random.choice(fallbacks), accuracy
 
     context = kb.iloc[I[0][0]]["content"]
-    prompt = f"""
-    Anda adalah chatbot edukasi kesehatan reproduksi perempuan.
-    Jawablah HANYA berdasarkan informasi berikut.
-    Jika informasi tidak tersedia, jawab: "Maaf, informasi tersebut belum tersedia."
-
-Informasi:
-{context}
-
-Pertanyaan:
-{query}
-
-Jawaban:
-"""
+    prompt = f"""Informasi: {context}\nPertanyaan: {query}\nJawaban:"""
 
     inputs = tokenizer(prompt, return_tensors="pt").to(qwen_model.device)
-
     with torch.no_grad():
-        outputs = qwen_model.generate(
-            **inputs,
-            max_new_tokens=120,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9
-        )
-
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    answer = response.split("Jawaban:")[-1].strip()
-
+        outputs = qwen_model.generate(**inputs, max_new_tokens=120)
+    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return answer, accuracy
 
 # =========================
@@ -204,20 +188,9 @@ if "messages" not in st.session_state:
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 for role, msg, acc in st.session_state.messages:
     if role == "user":
-        st.markdown(f"""
-        <div class="user-bubble">
-            <div class="sender">User</div>
-            {msg}
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='user-bubble'>{msg}</div>", unsafe_allow_html=True)
     else:
-        st.markdown(f"""
-        <div class="bot-bubble">
-            <div class="sender">Bot</div>
-            {msg}
-            <div class="accuracy">Tingkat akurasi: {acc}%</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div class='bot-bubble'>{msg}<div class='accuracy'>Akurasi: {acc}%</div></div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
@@ -235,13 +208,9 @@ col1, col2 = st.columns([5,1])
 with col1:
     st.text_input("💬 Tulis pertanyaanmu di sini...", key="input")
 with col2:
-    st.markdown("<br>", unsafe_allow_html=True)
     st.button("Kirim", on_click=send)
 
 # =========================
 # FOOTER
 # =========================
-st.markdown(
-    "<div class='footer'>⚠️ Chatbot ini hanya untuk edukasi, bukan pengganti konsultasi medis.</div>",
-    unsafe_allow_html=True
-)
+st.markdown("<div class='footer'>⚠️ Chatbot ini hanya untuk edukasi, bukan pengganti konsultasi medis.</div>", unsafe_allow_html=True)
